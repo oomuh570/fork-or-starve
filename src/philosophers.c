@@ -74,6 +74,9 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
 	//Naive Fork Pickup (will cause deadlock)
 	pthread_mutex_lock(&forks[left_fork(i)]);
 	printf("P%ld %s picked up LEFT fork %d\n", i, phil_names[i], left_fork(i));
+
+	//Forcing deadlock using usleep
+	usleep(50000);
 	
 	pthread_mutex_lock(&forks[right_fork(i)]);
 	printf("P%ld %s picked up RIGHT fork %d\n", i, phil_names[i], right_fork(i));
