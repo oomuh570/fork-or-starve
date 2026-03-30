@@ -21,14 +21,16 @@ void *think_and_eat(void *);
 int left_fork(int i);
 int right_fork(int i);
 
-sem_t mutex;
+//sem_t mutex; //Mark for removal
+sem_t waiter;
 
 int main()
 {
     pthread_t philosopher[NUM_PHILS];
     long i;
     srand(time(0)); //Seeding random times for different run results
-    sem_init(&mutex, 0, 1);
+    //sem_init(&mutex, 0, 1); //Mark for removal
+	sem_init(&waiter, 0, 4);
 
     //Creating mutexs for forks
     for (i = 0; i < NUM_PHILS; i++){
@@ -54,18 +56,22 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
     while (1){
       
 	//Thinking
-	sem_wait(&mutex);
+	//sem_wait(&mutex); //Mark for removal
+	sem_wait(&waiter);
 	state[i] = THINKING;
 	printf("P%ld %s is THINKING\n", i, phil_names[i]);
-	sem_post(&mutex);
+	//sem_post(&mutex); //Mark for removal
+	sem_post(&waiter);
 
 	usleep(500000); // think for 0.5 seconds
 	
 	//Hungry
-	sem_wait(&mutex);
+	//sem_wait(&mutex); //Mark for removal
+	sem_wait(&waiter);
 	state[i] = HUNGRY;
 	printf("P%ld %s is HUNGRY\n", i, phil_names[i]);
-	sem_post(&mutex);
+	//sem_post(&mutex); //Mark for removal
+	sem_post(&waiter);
 
 
  // ASYMMETRIC FORK PICKUP
@@ -93,10 +99,12 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
     }
 
 	//EATING
-	sem_wait(&mutex);
+	//sem_wait(&mutex); //Mark for removal
+	sem_wait(&waiter);
 	state[i] = EATING;
 	printf("P%ld %s is EATING\n", i, phil_names[i]);
-	sem_post(&mutex);
+	//sem_post(&mutex); //Mark for removal
+	sem_post(&waiter);
 	
 	
 	usleep(500000); // eat for 0.5 seconds
