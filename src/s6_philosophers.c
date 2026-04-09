@@ -1,0 +1,134 @@
+/*
+This code was taken from supplied lab material as a basic framework to develop our project
+*/
+#include <stdio.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define NUM_PHILS 5     
+#define THINKING 0
+#define HUNGRY 1
+#define EATING 2
+
+#define GREEN "\033[92m"   //EATING
+#define RED "\033[91m"     //HUNGRY
+#define BLUE "\033[94m"    //THINKING
+#define YELLOW "\033[93m"  //MEALS
+#define RESET "\033[0m"
+
+pthread_mutex_t forks[NUM_PHILS];
+int state[NUM_PHILS];
+char *phil_names[NUM_PHILS] = {"Aristotle", "Plato", "Socrates", "Descartes", "Kant"};
+int meals[NUM_PHILS] = {0};
+
+void *think_and_eat(void *);
+int left_fork(int i);
+int right_fork(int i);
+
+sem_t mutex;
+sem_t waiter;
+
+int main()
+{
+    pthread_t philosopher[NUM_PHILS];
+    long i;
+    srand(time(0)); //Seeding random times for different run results
+    sem_init(&mutex, 0, 1); 
+	  sem_init(&waiter, 0, 4);
+
+    //Creating mutexs for forks
+    for (i = 0; i < NUM_PHILS; i++){
+      pthread_mutex_init(&forks[i], NULL);
+    }
+    
+    //Creating concurrent threads
+    for (i = 0; i < NUM_PHILS; i++)
+      pthread_create(philosopher + i, 0, think_and_eat, (void *)(long)i);
+
+    //Joining threads
+    for (i = 0; i < NUM_PHILS; i++)
+      pthread_join(philosopher[i], NULL);
+    
+    return 0;
+}
+
+
+void *think_and_eat(void *arg)     /* executed concurrently by all philosophers */
+{
+    long i = (long)arg;
+    
+    while (1){
+      
+    //Thinking
+    sem_wait(&mutex); 
+    state[i] = THINKING;
+    printf("%sP%ld %s is THINKING%s\n", BLUE, i, phil_names[i], RESET);
+    sem_post(&mutex); 
+
+    usleep(2500000); // think for 0.5 seconds
+    
+    //Hungry
+    sem_wait(&mutex);
+    state[i] = HUNGRY;
+    printf("%sP%ld %s is HUNGRY%s\n", RED, i, phil_names[i], RESET);
+    sem_post(&mutex);
+
+
+    // WAITER — only wraps fork pickup
+    sem_wait(&waiter);  /* take a seat — blocks if 4 already seated */
+ 
+    if (i == NUM_PHILS - 1) {
+        
+        // P4 picks up RIGHT fork first
+        pthread_mutex_lock(&forks[right_fork(i)]);
+        printf("P%ld %s picked up RIGHT fork %d\n", i, phil_names[i], right_fork(i));
+        
+        usleep(2500000);
+        
+        pthread_mutex_lock(&forks[left_fork(i)]);
+        printf("P%ld %s picked up LEFT fork %d\n", i, phil_names[i], left_fork(i));
+    } 
+    else {
+        
+        // Everyone else picks up LEFT fork first
+        pthread_mutex_lock(&forks[left_fork(i)]);
+        printf("P%ld %s picked up LEFT fork %d\n", i, phil_names[i], left_fork(i));
+        
+        usleep(2500000); 
+        
+        pthread_mutex_lock(&forks[right_fork(i)]);
+        printf("P%ld %s picked up RIGHT fork %d\n", i, phil_names[i], right_fork(i));
+    }
+
+	//EATING
+	sem_wait(&mutex);
+	state[i] = EATING;
+	meals[i]++;
+	printf("%sP%ld %s is EATING%s\n", GREEN, i, phil_names[i], RESET);
+	printf("%sP%ld %s have eaten %d meal(s)%s\n", YELLOW, i, phil_names[i], meals[i], RESET);
+	sem_post(&mutex);
+
+	
+	
+	usleep(2500000); // eat for 0.5 seconds
+
+  //Put forks down then release waiter seat
+	pthread_mutex_unlock(&forks[right_fork(i)]);
+	pthread_mutex_unlock(&forks[left_fork(i)]);
+  sem_post(&waiter);    /* leave the table — allow next philosopher in */
+  
+}
+
+    return 0;
+}
+
+int left_fork(int i){
+  return i;
+}
+
+int right_fork(int i){
+  return (i + 1) % NUM_PHILS;
+}
