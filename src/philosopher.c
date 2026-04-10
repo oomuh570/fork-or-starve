@@ -1,3 +1,8 @@
+/*
+ * File: philosopher.c
+ * Purpose: Runs the philosopher thread loop for thinking, getting forks, eating, and checking starvation.
+ */
+
 #include "philosopher.h"
 #include "forks.h"
 #include "semaphore.h"
@@ -6,6 +11,14 @@
 #include <unistd.h>
 #include <stdio.h>
 
+/*
+ * Function: think_and_eat
+ * Purpose: Runs one philosopher's main loop. The philosopher thinks, becomes hungry,
+ *          picks up forks based on the current mode, eats, puts forks down, and repeats.
+ * Params:
+ *   arg - philosopher number passed into the thread
+ * Returns: void pointer
+ */
 void *think_and_eat(void *arg)     /* executed concurrently by all philosophers */
 {
     long i = (long)arg;
@@ -64,8 +77,6 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
 	meal_record(i);
 	sem_post(&mutex);
 
-	
-	
 	usleep(500000); // eat for 0.5 seconds
 
 	//Put forks down then release waiter seat

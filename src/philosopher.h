@@ -1,3 +1,8 @@
+/*
+ * File: philosopher.h
+ * Purpose: Header file for philosopher threads and shared philosopher data.
+ */
+
 #ifndef PHILOSOPHER_H
 #define PHILOSOPHER_H
 
@@ -17,7 +22,13 @@ extern int meals[NUM_PHILS];
 extern int mode;
 extern int steps;
 
+/*
+ * Function: think_and_eat
+ * Purpose: Runs the main loop for one philosopher thread.
+ * Params:
+ *   arg - philosopher number passed into the thread
+ * Returns: void pointer
+ */
 void *think_and_eat(void *);
 
 #endif
-
