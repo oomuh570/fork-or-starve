@@ -30,6 +30,7 @@ int main(int argc, char *argv[])
       }
       else {
 	printf("Unknown argument \"%s\" detected\n", argv[i]);
+	exit(1);
       }
     }
 
