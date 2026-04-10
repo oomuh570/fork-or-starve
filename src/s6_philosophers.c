@@ -7,6 +7,7 @@ This code was taken from supplied lab material as a basic framework to develop o
 #include <semaphore.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 #define NUM_PHILS 5     
 #define THINKING 0
@@ -31,13 +32,42 @@ int right_fork(int i);
 sem_t mutex;
 sem_t waiter;
 
-int main()
+int mode = 0;
+int steps = -1;
+
+int main(int argc, char *argv[])
 {
+  
     pthread_t philosopher[NUM_PHILS];
     long i;
+
+    for (int i = 1; i < argc; i++) {
+      if (strncmp(argv[i], "--mode=", 7) == 0) {
+	mode = atoi(argv[i] + 7);     //quora.com/How-do-I-extract-an-integer-from-the-string-in-C
+      }
+      else if (strncmp(argv[i], "--steps=", 8) == 0) {
+	steps = atoi(argv[i] + 8);
+      }
+      else {
+	printf("Unknown argument \"%s\" detected\n", argv[i]);
+      }
+    }
+
+    if (mode != 0 && mode != 1 && mode != 2){
+      printf("Invalid mode selected, exiting program\n");
+      exit(1);
+    }
+
+    if (steps != 1){
+      printf("Running mode=%d for %d steps\n", mode, steps);
+    }
+    else {
+      printf("Running mode=%d\n", mode);
+    } 
+    
     srand(time(0)); //Seeding random times for different run results
     sem_init(&mutex, 0, 1); 
-	  sem_init(&waiter, 0, 4);
+    sem_init(&waiter, 0, 4);
 
     //Creating mutexs for forks
     for (i = 0; i < NUM_PHILS; i++){
@@ -59,8 +89,9 @@ int main()
 void *think_and_eat(void *arg)     /* executed concurrently by all philosophers */
 {
     long i = (long)arg;
+    int count = 0;
     
-    while (1){
+    while (steps == -1 || count < steps){
       
     //Thinking
     sem_wait(&mutex); 
@@ -68,7 +99,7 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
     printf("%sP%ld %s is THINKING%s\n", BLUE, i, phil_names[i], RESET);
     sem_post(&mutex); 
 
-    usleep(2500000); // think for 0.5 seconds
+    usleep(500000); // think for 0.5 seconds
     
     //Hungry
     sem_wait(&mutex);
@@ -77,16 +108,19 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
     sem_post(&mutex);
 
 
-    // WAITER — only wraps fork pickup
-    sem_wait(&waiter);  /* take a seat — blocks if 4 already seated */
- 
-    if (i == NUM_PHILS - 1) {
+    // MODE 2 - WAITER SOLUTION — only wraps fork pickup
+    if (mode == 2){
+      sem_wait(&waiter);  /* take a seat — blocks if 4 already seated */
+    }
+
+    // MODE 1 - ASYMMETRIC SOLUTION
+    if (mode == 1 && i == NUM_PHILS - 1) {
         
         // P4 picks up RIGHT fork first
         pthread_mutex_lock(&forks[right_fork(i)]);
         printf("P%ld %s picked up RIGHT fork %d\n", i, phil_names[i], right_fork(i));
         
-        usleep(2500000);
+        usleep(500000);
         
         pthread_mutex_lock(&forks[left_fork(i)]);
         printf("P%ld %s picked up LEFT fork %d\n", i, phil_names[i], left_fork(i));
@@ -97,7 +131,7 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
         pthread_mutex_lock(&forks[left_fork(i)]);
         printf("P%ld %s picked up LEFT fork %d\n", i, phil_names[i], left_fork(i));
         
-        usleep(2500000); 
+        usleep(500000); 
         
         pthread_mutex_lock(&forks[right_fork(i)]);
         printf("P%ld %s picked up RIGHT fork %d\n", i, phil_names[i], right_fork(i));
@@ -113,13 +147,17 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
 
 	
 	
-	usleep(2500000); // eat for 0.5 seconds
+	usleep(500000); // eat for 2.5 seconds
 
-  //Put forks down then release waiter seat
+	//Put forks down then release waiter seat
 	pthread_mutex_unlock(&forks[right_fork(i)]);
 	pthread_mutex_unlock(&forks[left_fork(i)]);
-  sem_post(&waiter);    /* leave the table — allow next philosopher in */
-  
+
+	if (mode == 2){
+	  sem_post(&waiter);    /* leave the table — allow next philosopher in */
+	}
+	  
+	count++;
 }
 
     return 0;
