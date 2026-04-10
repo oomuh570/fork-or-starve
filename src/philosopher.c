@@ -75,6 +75,10 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
 	if (mode == 2){
 	  sem_post(&waiter);    /* leave the table — allow next philosopher in */
 	}
+	
+	sem_wait(&mutex);
+	starve_check(count);
+	sem_post(&mutex);
 	  
 	count++;
 }
