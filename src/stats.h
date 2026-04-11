@@ -24,4 +24,13 @@ void meal_record(long i);
  */
 void starve_check(int count);
 
+/*
+ * Function: print_stats
+ * Purpose: Prints final statistics summary when simulation ends.
+ *          Shows mode, total cycles, meals per philosopher,
+ *          and overall fairness assessment.
+ * Returns: void
+ */
+void print_stats();
+
 #endif

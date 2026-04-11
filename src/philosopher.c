@@ -29,7 +29,7 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
     //Thinking
     sem_wait(&mutex); 
     state[i] = THINKING;
-    print_state(i, THINKING);
+    //print_state(i, THINKING);
     sem_post(&mutex); 
 
     usleep(500000); // think for 0.5 seconds
@@ -37,43 +37,45 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
     //Hungry
     sem_wait(&mutex);
     state[i] = HUNGRY;
-    print_state(i, HUNGRY);
+    //print_state(i, HUNGRY);
     sem_post(&mutex);
 
 
     // MODE 2 - WAITER SOLUTION — only wraps fork pickup
     if (mode == 2){
       sem_wait(&waiter);  /* take a seat — blocks if 4 already seated */
+      pthread_mutex_lock(&forks[left_fork(i)]);
+      pthread_mutex_lock(&forks[right_fork(i)]);
     }
 
     // MODE 1 - ASYMMETRIC SOLUTION
-    if (mode == 1 && i == NUM_PHILS - 1) {
+    else if (mode == 1 && i == NUM_PHILS - 1) {
         
         // P4 picks up RIGHT fork first
         pthread_mutex_lock(&forks[right_fork(i)]);
-        printf("P%ld %s picked up RIGHT fork %d\n", i, phil_names[i], right_fork(i));
+        //printf("P%ld %s picked up RIGHT fork %d\n", i, phil_names[i], right_fork(i));
         
         usleep(500000);
         
         pthread_mutex_lock(&forks[left_fork(i)]);
-        printf("P%ld %s picked up LEFT fork %d\n", i, phil_names[i], left_fork(i));
+        //printf("P%ld %s picked up LEFT fork %d\n", i, phil_names[i], left_fork(i));
     } 
     else {
         
         // Everyone else picks up LEFT fork first
         pthread_mutex_lock(&forks[left_fork(i)]);
-        printf("P%ld %s picked up LEFT fork %d\n", i, phil_names[i], left_fork(i));
+        //printf("P%ld %s picked up LEFT fork %d\n", i, phil_names[i], left_fork(i));
         
         usleep(500000); 
         
         pthread_mutex_lock(&forks[right_fork(i)]);
-        printf("P%ld %s picked up RIGHT fork %d\n", i, phil_names[i], right_fork(i));
+        //printf("P%ld %s picked up RIGHT fork %d\n", i, phil_names[i], right_fork(i));
     }
 
 	//EATING
 	sem_wait(&mutex);
 	state[i] = EATING;
-	print_state(i, EATING);
+	//print_state(i, EATING);
 	meal_record(i);
 	sem_post(&mutex);
 
