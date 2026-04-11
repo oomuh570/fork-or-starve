@@ -40,11 +40,14 @@ void print_state(long i, int state) {
 /*
  * Function: clear_screen
  * Purpose: Clears terminal for live table refresh
+ *          Only clears if running in a real terminal — not when redirected to file
  * Returns: void
  */
 void clear_screen() {
-    printf("\033[2J");
-    printf("\033[H");
+    if (isatty(fileno(stdout))) {   /* only clear if running in real terminal */
+        printf("\033[2J");
+        printf("\033[H");
+    }
     fflush(stdout);
 }
 
@@ -52,6 +55,7 @@ void clear_screen() {
  * Function: print_table
  * Purpose:  Prints live state table of all philosophers
  *           Shows state, forks held, and meal count
+ *           Shows deadlock alert if all philosophers stuck in HUNGRY
  * Returns:  void
  */
 void print_table() {
@@ -82,6 +86,18 @@ void print_table() {
     }
 
     printf(CYAN "  ──────────────────────────────────────────────────────────\n\n" RESET);
+
+    /* deadlock alert — check if all philosophers stuck in HUNGRY */
+    if (mode == 0) {
+        int all_hungry = 1;
+        for (int i = 0; i < NUM_PHILS; i++) {
+            if (state[i] != HUNGRY) { all_hungry = 0; break; }
+        }
+        if (all_hungry) {
+            printf(RED BOLD "  *** DEADLOCK DETECTED — all philosophers waiting, none eating ***\n" RESET);
+        }
+    }
+
     fflush(stdout);
 }
 

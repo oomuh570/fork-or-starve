@@ -1,0 +1,48 @@
+fork-or-starve Test Plan 
+
+════════════════════════════════════════════
+mode=0 — NAIVE DEADLOCK TESTS
+Run: ./dining_philosophers --mode=0
+════════════════════════════════════════════
+T01  5 threads start and print states
+T02  Deadlock occurs within ~10 cycles
+T03  All philosophers stuck in HUNGRY
+T04  Forks show as HELD in display
+T05  Meal counts all 0
+
+════════════════════════════════════════════
+mode=1 — ASYMMETRIC SOLUTION TESTS
+Run: ./dining_philosophers --mode=1 --steps=10
+════════════════════════════════════════════
+T06  No deadlock for 10 steps
+T07  P4 picks up right fork first
+T08  All philosophers eat
+T09  No fork held by 2 philosophers
+T10  Stats print at end
+
+════════════════════════════════════════════
+mode=2 — WAITER SEMAPHORE TESTS
+Run: ./dining_philosophers --mode=2 --steps=10
+════════════════════════════════════════════
+T11  No deadlock for 10 steps
+T12  All philosophers eat
+T13  Meal counts equal across philosophers
+T14  Semaphore never exceeds 4 concurrent
+T15  Stats print at end
+T16  Fairness shows OK in stats
+
+════════════════════════════════════════════
+DISPLAY AND CLI TESTS
+════════════════════════════════════════════
+T17  --mode=0 selects naive
+T18  --mode=1 selects asymmetric
+T19  --mode=2 selects waiter
+T20  --steps=10 stops after 10 cycles
+T21  --help prints usage
+T22  Invalid argument exits with error
+T23  Table refreshes every 0.5 seconds
+T24  Colors correct — green/red/blue
+T25  Meal counts update in table
+
+════════════════════════════════════════════
+

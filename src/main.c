@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "philosopher.h"
 #include "semaphore.h"
@@ -16,7 +17,6 @@ int meals[NUM_PHILS] = {0};
 
 int mode = 0;
 int steps = -1;
-int total_cycles = 0;
 
 
 int main(int argc, char *argv[])
@@ -68,8 +68,10 @@ int main(int argc, char *argv[])
         state[i] = THINKING;
     }
 
-    /* start display thread */
-    pthread_create(&display, NULL, display_thread, NULL);
+    /* only start display thread if running in a real terminal */
+    if (isatty(fileno(stdout))) {
+        pthread_create(&display, NULL, display_thread, NULL);
+    }
 
     /* create philosopher threads */
     for (i = 0; i < NUM_PHILS; i++)
@@ -81,6 +83,7 @@ int main(int argc, char *argv[])
 
     /* print final statistics */
     print_stats();
+    fflush(stdout);
 
     return 0;
 }
