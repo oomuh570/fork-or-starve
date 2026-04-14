@@ -18,6 +18,8 @@ int   fork_holder[NUM_PHILS];   /* -1 = free, N = held by philosopher N */
 
 int asy_mode = ASY_NONE;
 int waiter_num = 4;
+int mode = 0;
+int steps = -1;
 
 int main(int argc, char *argv[])
 {

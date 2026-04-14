@@ -215,10 +215,3 @@ void *think_and_eat(void *arg)
     return 0;
 }
 
-void rand_sleep() {
-	int high = 500000;
-	int low = 50;
-	int wait = (rand() % (high - low + 1)) + low;
-	usleep(wait);
-}
-
