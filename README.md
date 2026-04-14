@@ -43,8 +43,17 @@ make clean
 # Run asymmetric solution — no deadlock (mode=1)
 ./dining_philosophers --mode=1
 
+# Run asymmetric with odd philosophers picking right fork first (default)
+./dining_philosophers --mode=1 --asy=odd
+
+# Run asymmetric with even philosophers picking right fork first
+./dining_philosophers --mode=1 --asy=even
+
 # Run waiter semaphore solution — no deadlock (mode=2)
 ./dining_philosophers --mode=2
+
+# Run waiter with custom number of waiters
+./dining_philosophers --mode=2 --waiters=3
 
 # Run for a specific number of steps
 ./dining_philosophers --mode=2 --steps=200
@@ -72,16 +81,21 @@ Expected output: Deadlock detected within ~10 cycles. All philosophers stuck in 
 ---
 
 ### mode=1 — Asymmetric Solution
-Philosopher 5 (P4) picks up the right fork first instead of the left. This breaks the circular wait condition — P3 and P4 now compete for the same fork, so one of them will always succeed and make forward progress.
+Configurable via `--asy=odd` or `--asy=even`. By default odd-indexed philosophers pick up the right fork first, breaking the circular wait condition. One philosopher is always able to make forward progress.
+
+| Flag | Behaviour |
+|---|---|
+| `--asy=odd` | Odd-indexed philosophers (P1, P3) pick up right fork first (default) |
+| `--asy=even` | Even-indexed philosophers (P0, P2, P4) pick up right fork first |
 
 Expected output: All philosophers eat. No deadlock detected.
 
 ---
 
 ### mode=2 — Waiter (Semaphore Solution)
-A `sem_t` counting semaphore initialized to 4 limits how many philosophers can attempt to acquire forks simultaneously. Since at most four of five philosophers compete at once, at least one philosopher will always successfully acquire both forks, mathematically guaranteeing no deadlock.
+A `sem_t` counting semaphore limits how many philosophers can attempt to acquire forks simultaneously. The waiter count is configurable via `--waiters=N` (default: 4). Since at most N of five philosophers compete at once, at least one philosopher will always successfully acquire both forks, mathematically guaranteeing no deadlock.
 
-Expected output: All philosophers eat. Semaphore never exceeds 4 concurrent. No deadlock detected.
+Expected output: All philosophers eat. Semaphore never exceeds N concurrent. No deadlock detected.
 
 ---
 
@@ -93,9 +107,10 @@ Expected output: All philosophers eat. Semaphore never exceeds 4 concurrent. No 
 | `pthread_join()` | Main thread waits for all philosopher threads to finish |
 | `pthread_mutex_t` | One mutex per fork — enforces mutual exclusion |
 | `pthread_mutex_lock()` | Philosopher claims a fork (blocks if already held) |
+| `pthread_mutex_trylock()` | Non-blocking fork attempt — used for no infinite waiting |
 | `pthread_mutex_unlock()` | Philosopher releases a fork when done eating |
-| `sem_t` | Counting semaphore initialized to 4 for waiter solution |
-| `sem_wait()` | Decrements semaphore — blocks if 4 philosophers already competing |
+| `sem_t` | Counting semaphore initialized to N for waiter solution |
+| `sem_wait()` | Decrements semaphore — blocks if N philosophers already competing |
 | `sem_post()` | Increments semaphore — signals next philosopher can attempt forks |
 
 ---
@@ -109,15 +124,15 @@ THINKING → HUNGRY → (wait for forks) → EATING → THINKING → ...
 ```
 
 ```c
-pthread_mutex_lock(&state_mutex);
+sem_wait(&mutex);
 state[id] = HUNGRY;             /* update state before fork attempt */
-pthread_mutex_unlock(&state_mutex);
+sem_post(&mutex);
 
 pick_up_forks(id);              /* acquire forks */
 
-pthread_mutex_lock(&state_mutex);
+sem_wait(&mutex);
 state[id] = EATING;             /* confirm eating after forks acquired */
-pthread_mutex_unlock(&state_mutex);
+sem_post(&mutex);
 ```
 
 ---
@@ -133,26 +148,50 @@ pthread_mutex_unlock(&forks[right(i)]);
 pthread_mutex_unlock(&forks[left(i)]);
 ```
 
-### mode=1 — Asymmetric Algorithm
+### mode=1 — Asymmetric Algorithm (odd/even)
 ```c
-if (id == NUM_PHILOSOPHERS - 1) {          /* Philosopher 5 (P4) only */
-    pthread_mutex_lock(&forks[right(id)]); /* right first */
-    pthread_mutex_lock(&forks[left(id)]);
+if (asy_mode == ASY_ODD && (i % 2 != 0)) right_first = 1;
+if (asy_mode == ASY_EVEN && (i % 2 == 0)) right_first = 1;
+
+if (right_first) {
+    pickup_forks_safe(i, right_fork(i), left_fork(i));
 } else {
-    pthread_mutex_lock(&forks[left(id)]);  /* all others: left first */
-    pthread_mutex_lock(&forks[right(id)]);
+    pickup_forks_safe(i, left_fork(i), right_fork(i));
 }
 ```
 
 ### mode=2 — Waiter Algorithm
 ```c
-sem_wait(&waiter);                     /* block if 4 already competing */
-pthread_mutex_lock(&forks[left(id)]);
-pthread_mutex_lock(&forks[right(id)]);
+sem_wait(&waiter);                     /* block if N already competing */
+pickup_forks_safe(i, left(i), right(i));
 /* eat */
-pthread_mutex_unlock(&forks[right(id)]);
-pthread_mutex_unlock(&forks[left(id)]);
+release_forks(i);
 sem_post(&waiter);                     /* release seat at table */
+```
+
+### No Infinite Waiting — Trylock with Backoff
+```c
+while (pthread_mutex_trylock(&forks[fork_index]) != 0) {
+    attempts++;
+    if (attempts >= MAX_ATTEMPTS && first_fork != -1) {
+        /* gave up — release first fork and retry */
+        release_fork(first_fork);
+        pthread_mutex_unlock(&forks[first_fork]);
+        return 0;
+    }
+    usleep((rand() % 50 + 10) * 1000);   /* back off 10-60ms */
+}
+```
+
+### Fork Conflict Detection
+Every fork claim records the philosopher index in `fork_holder[]`. If a fork is claimed while already held a `FORK CONFLICT` warning is printed to stderr. This proves no two philosophers hold the same fork simultaneously.
+
+```c
+if (fork_holder[fork_index] != -1) {
+    fprintf(stderr, "*** FORK CONFLICT: Fork %d already held ***\n", fork_index);
+} else {
+    fork_holder[fork_index] = (int)phil_id;
+}
 ```
 
 ### Deadlock Detection
@@ -166,17 +205,19 @@ The simulator takes no interactive input during runtime. All configuration is pa
 
 | Argument | Values | Description |
 |---|---|---|
-| `--mode` | `0`, `1`, `2` | Sets the synchronization mode (0=naive, 1=asymmetric, 2=waiter) |
-| `--steps` | Any positive integer | How many simulation cycles to run (default: 50) |
+| `--mode` | `0`, `1`, `2` | Sets the synchronization mode |
+| `--asy` | `odd`, `even` | Asymmetric fork order for mode=1 (default: odd) |
+| `--waiters` | `1` to `4` | Waiter semaphore count for mode=2 (default: 4) |
+| `--steps` | Any positive integer | How many simulation cycles to run |
 | `--help` | — | Prints usage instructions and exits |
 
-If no arguments are provided the simulator defaults to `--mode=0 --steps=50`. If an unrecognized argument is passed, the program prints a friendly error message and exits cleanly.
+If an unrecognized argument is passed, the program prints a friendly error message and exits cleanly.
 
 ---
 
 ## Output
 
-The simulator produces a live state table updating every 0.5 seconds, and a final statistics summary when the simulation ends.
+The simulator produces a live state table updating every 0.5 seconds, a final statistics summary when the simulation ends, and a `simulation.log` file recording every event.
 
 ### Live State Table
 
@@ -208,6 +249,11 @@ The simulator produces a live state table updating every 0.5 seconds, and a fina
 *** STARVATION WARNING — P2 Socrates meal count lagging significantly ***
 ```
 
+### No Infinite Waiting — Gave Up Event
+```
+P0 Aristotle gave up waiting for Fork 1 — releasing Fork 0 and retrying
+```
+
 ### Final Statistics Summary
 ```
 ── STATISTICS ────────────────────────────────────────────
@@ -223,7 +269,25 @@ The simulator produces a live state table updating every 0.5 seconds, and a fina
 ──────────────────────────────────────────────────────────
 ```
 
-In mode=0 all meal counts will be 0 since no philosopher eats before deadlock. In mode=1 and mode=2 counts are distributed across all philosophers.
+### simulation.log — Status Tracking
+Every state change and fork event is logged to `simulation.log` for full audit trail:
+
+```
+P0 Aristotle   -> THINKING
+P0 Aristotle   -> HUNGRY
+P0 Aristotle   -> FORK 0 CLAIMED
+P0 Aristotle   -> FORK 1 CLAIMED
+P0 Aristotle   -> EATING
+P0 Aristotle   -> FORK 1 RELEASED
+P0 Aristotle   -> FORK 0 RELEASED
+P0 Aristotle   -> GAVE UP Fork 1 — releasing Fork 0 retrying
+```
+
+To verify no fork conflict:
+```bash
+grep "FORK 0" simulation.log   # should alternate CLAIMED then RELEASED
+grep "GAVE UP" simulation.log  # shows no infinite waiting in action
+```
 
 ---
 
@@ -239,24 +303,24 @@ Fairness is measured by tracking meal counts per philosopher throughout the simu
 fork-or-starve/
 │
 ├── Makefile
-├── README.txt
+├── README.md
+├── simulation.log      — generated at runtime — full event log
 │
 ├── src/
 │   ├── main.c          — entry point, CLI argument parsing
-│   ├── philosopher.c   — thread logic, state machine, state[i] tracking
+│   ├── philosopher.c   — thread logic, state machine, fork conflict detection
 │   ├── philosopher.h
-│   ├── forks.c         — mutex init, mode=0 naive, mode=1 asymmetric
+│   ├── forks.c         — left_fork() and right_fork() index helpers
 │   ├── forks.h
-│   ├── semaphore.c     — mode=2 waiter semaphore solution
+│   ├── semaphore.c     — mutex and waiter semaphore initialization
 │   ├── semaphore.h
 │   ├── display.c       — terminal output, ANSI colors, 0.5s refresh
 │   ├── display.h
-│   ├── stats.c         — meal counts, starvation detection, deadlock log
+│   ├── stats.c         — meal counts, starvation detection, print_stats
 │   └── stats.h
 │
 └── docs/
     ├── test_plan.txt
-   
 ```
 
 ---
@@ -267,18 +331,24 @@ fork-or-starve/
 |---------|-------|
 | POSIX Threads (`pthread_create()`) | One thread per philosopher |
 | Mutex Locks (`pthread_mutex_t`) | One mutex per fork |
-| Counting Semaphore (`sem_t`) | mode=2 waiter — limits concurrent access to 4 |
+| Counting Semaphore (`sem_t`) | mode=2 waiter — limits concurrent access |
 | Deadlock | All 4 conditions shown in mode=0 |
 | Deadlock Prevention | mode=1 asymmetric and mode=2 waiter solutions |
+| No Infinite Waiting | `pthread_mutex_trylock` with backoff and gave up retry |
+| Fork Conflict Detection | `fork_holder[]` array tracks ownership — conflict logged to stderr |
+| Status Tracking / Logging | Every event written to `simulation.log` |
+| Random Sleep Times | `rand_sleep()` — 100ms to 600ms per state |
 | Starvation Detection | Meal count comparison in statistics output |
-| Race Conditions | Prevented via state[i] mutex protection |
+| Race Conditions | Prevented via `state[i]` mutex protection |
 
 ---
 
 ## Known Limitations
 
-- Starvation is possible in mode=1 under heavy load
+- `sem_init()` deprecated on macOS — works correctly on course Linux VM
+- Starvation possible in mode=1 under heavy load
 - Simulation uses sleep-based timing rather than real concurrency scheduling
-- Number of philosophers is fixed at 5 (configurable via #define)
+- Number of philosophers is fixed at 5 (configurable via `#define NUM_PHILS`)
+- mode=0 stats do not print — threads deadlock and never finish — hit Ctrl+C to stop
 
 ---
