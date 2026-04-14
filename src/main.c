@@ -18,6 +18,7 @@ int meals[NUM_PHILS] = {0};
 int mode = 0;
 int steps = -1;
 
+int waiter_num = 4;
 
 int main(int argc, char *argv[])
 {
@@ -32,11 +33,15 @@ int main(int argc, char *argv[])
         else if (strncmp(argv[i], "--steps=", 8) == 0) {
             steps = atoi(argv[i] + 8);
         }
+		else if (strncmp(argv[i], "--waiters=", 10) == 0) { // New argument check
+        waiter_num = atoi(argv[i] + 10);
+		}
         else if (strcmp(argv[i], "--help") == 0) {
             printf("\nUsage: ./dining_philosophers [OPTIONS]\n\n");
             printf("  --mode=0     Naive — deadlock will occur\n");
             printf("  --mode=1     Asymmetric — no deadlock\n");
             printf("  --mode=2     Waiter semaphore — no deadlock\n");
+			printf("  --waiters=N  Number of waiters serving the philosopher\n");
             printf("  --steps=N    Number of cycles per philosopher\n");
             printf("  --help       Show this help message\n\n");
             exit(0);
@@ -60,7 +65,7 @@ int main(int argc, char *argv[])
     }
 
     srand(time(0));
-    init_semaphores();
+    init_semaphores(waiter_num);
 
     /* initialize forks and states */
     for (i = 0; i < NUM_PHILS; i++) {
