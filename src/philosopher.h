@@ -30,5 +30,6 @@ extern int steps;
  * Returns: void pointer
  */
 void *think_and_eat(void *);
+void rand_sleep();
 
 #endif
