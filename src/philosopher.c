@@ -152,18 +152,17 @@ void *think_and_eat(void *arg)
 		if (asy_mode == ASY_ODD && (i % 2 != 0))
 			right_first = 1;
 		else if (asy_mode == ASY_EVEN && (i % 2 == 0))
-			right_first == 1;
+			right_first = 0;
 
 		if (right_first) {
 			pthread_mutex_lock(&forks[right_fork(i)]);
-        	    	usleep(500000);
 			pthread_mutex_lock(&forks[left_fork(i)]);
 		}
 		else {
 			pthread_mutex_lock(&forks[left_fork(i)]);
-			usleep(500000);
 			pthread_mutex_lock(&forks[right_fork(i)]);
 		}
+	}
 
         /* MODE 1 - ASYMMETRIC — P4 picks up right fork first */
         else if (mode == 1 && i == NUM_PHILS - 1) {
@@ -222,3 +221,4 @@ void rand_sleep() {
 	int wait = (rand() % (high - low + 1)) + low;
 	usleep(wait);
 }
+
