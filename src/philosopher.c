@@ -29,9 +29,11 @@ void rand_sleep() {
 
 /*
  * Function: claim_fork
- * Purpose:  Claims a fork for a philosopher and logs it to simulation.log.
+ * Purpose:  Records that a philosopher has claimed a fork.
  *           Checks fork_holder to confirm no two philosophers hold the same fork.
- *           If a conflict is detected it prints a CONFLICT WARNING instead of crashing.
+ *           If a conflict is detected prints a CONFLICT WARNING to stderr.
+ *           Logs the claim to simulation.log.
+ *           Must be called AFTER pthread_mutex_lock succeeds.
  * Params:
  *   fork_index - index of the fork being claimed
  *   phil_id    - philosopher number claiming the fork
@@ -40,12 +42,12 @@ void rand_sleep() {
 static void claim_fork(int fork_index, long phil_id) {
     sem_wait(&mutex);
 
-    /* fork conflict detection — check if already held */
+    /* fork conflict detection — if fork_holder is not -1 two philosophers hold the same fork */
     if (fork_holder[fork_index] != -1) {
         fprintf(stderr,
             "*** FORK CONFLICT: Fork %d claimed by P%ld %s but already held by P%d %s ***\n",
             fork_index,
-            phil_id, phil_names[phil_id],
+            phil_id,               phil_names[phil_id],
             fork_holder[fork_index], phil_names[fork_holder[fork_index]]);
     } else {
         fork_holder[fork_index] = (int)phil_id;
@@ -53,7 +55,7 @@ static void claim_fork(int fork_index, long phil_id) {
 
     sem_post(&mutex);
 
-    /* log fork claim */
+    /* log fork claim to simulation.log */
     FILE *log = fopen("simulation.log", "a");
     if (log) {
         fprintf(log, "P%ld %-12s -> FORK %d CLAIMED\n",
@@ -64,8 +66,10 @@ static void claim_fork(int fork_index, long phil_id) {
 
 /*
  * Function: release_fork
- * Purpose:  Releases a fork and logs it to simulation.log.
+ * Purpose:  Records that a philosopher has released a fork.
  *           Clears the fork_holder entry so the next philosopher can claim it.
+ *           Logs the release to simulation.log.
+ *           Must be called BEFORE pthread_mutex_unlock.
  * Params:
  *   fork_index - index of the fork being released
  * Returns: void
@@ -172,7 +176,7 @@ void *think_and_eat(void *arg)
         log_state(i, "EATING");
         rand_sleep();
 
-        /* PUT FORKS DOWN — release and unlock */
+        /* PUT FORKS DOWN — release tracking then unlock mutex */
         release_fork(right_fork(i));
         pthread_mutex_unlock(&forks[right_fork(i)]);
         release_fork(left_fork(i));
