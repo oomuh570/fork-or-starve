@@ -14,7 +14,7 @@ sem_t waiter;
  * Params: none
  * Returns: void
  */
-void init_semaphores() {
+void init_semaphores(int waiters) {
     sem_init(&mutex, 0, 1);
-    sem_init(&waiter, 0, 4);
+    sem_init(&waiter, 0, waiters);
 }

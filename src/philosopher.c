@@ -2,7 +2,6 @@
  * File: philosopher.c
  * Purpose: Runs the philosopher thread loop for thinking, getting forks, eating, and checking starvation.
  */
-
 #include "philosopher.h"
 #include "forks.h"
 #include "semaphore.h"
@@ -10,6 +9,10 @@
 #include "stats.h"
 #include <unistd.h>
 #include <stdio.h>
+
+// for random sleep
+#include <stdlib.h>
+#include <time.h>
 
 /*
  * Function: think_and_eat
@@ -21,6 +24,7 @@
  */
 void *think_and_eat(void *arg)     /* executed concurrently by all philosophers */
 {
+	srand(time(NULL));
     long i = (long)arg;
     int count = 0;
     
@@ -33,7 +37,8 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
         /* print plain text when output redirected to file — for testing */
         if (!isatty(fileno(stdout)))
             printf("P%ld %s is THINKING\n", i, phil_names[i]);
-        usleep(500000);
+        //usleep(500000);
+		rand_sleep();
 
         /* HUNGRY */
         sem_wait(&mutex);
@@ -71,6 +76,12 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
 			pthread_mutex_lock(&forks[right_fork(i)]);
 		}
 
+        /* MODE 1 - ASYMMETRIC — P4 picks up right fork first */
+        else if (mode == 1 && i == NUM_PHILS - 1) {
+            pthread_mutex_lock(&forks[right_fork(i)]);
+            //usleep(500000);
+			rand_sleep();
+            pthread_mutex_lock(&forks[left_fork(i)]);
         }
         /* MODE 0 - NAIVE and MODE 1 everyone else — left first */
         else if (asy_mode == ASY_ODD) {
@@ -91,7 +102,8 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
         /* print plain text when output redirected to file — for testing */
         if (!isatty(fileno(stdout)))
             printf("P%ld %s is EATING\n", i, phil_names[i]);
-        usleep(500000);
+        //usleep(500000);
+		rand_sleep();
 
         /* PUT FORKS DOWN */
         pthread_mutex_unlock(&forks[right_fork(i)]);
@@ -110,4 +122,11 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
     }
 
     return 0;
+}
+
+void rand_sleep() {
+	int high = 500000;
+	int low = 50;
+	int wait = (rand() % (high - low + 1)) + low;
+	usleep(wait);
 }

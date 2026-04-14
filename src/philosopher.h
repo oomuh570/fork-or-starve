@@ -36,5 +36,6 @@ extern int asy_mode;
  * Returns: void pointer
  */
 void *think_and_eat(void *);
+void rand_sleep();
 
 #endif

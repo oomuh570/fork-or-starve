@@ -17,6 +17,6 @@ extern sem_t waiter;
  * Params: none
  * Returns: void
  */
-void init_semaphores();
+void init_semaphores(int waiters);
 
 #endif
