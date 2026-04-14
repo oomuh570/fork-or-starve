@@ -10,6 +10,10 @@
 
 #define NUM_PHILS 5
 
+#define ASY_NONE 0
+#define ASY_ODD 1
+#define ASY_EVEN 2
+
 #define THINKING 0
 #define HUNGRY   1
 #define EATING   2
@@ -22,6 +26,8 @@ extern int   fork_holder[NUM_PHILS];   /* tracks which philosopher holds each fo
 
 extern int mode;
 extern int steps;
+
+extern int asy_mode;
 
 /*
  * Function: think_and_eat

@@ -145,6 +145,26 @@ void *think_and_eat(void *arg)
             pthread_mutex_lock(&forks[right_fork(i)]);
             claim_fork(right_fork(i), i);
         }
+        /* MODE 1 - ASYMMETRIC — P4 picks up right fork first */ 
+	else if (mode == 1) {
+		int right_first = 0;
+
+		if (asy_mode == ASY_ODD && (i % 2 != 0))
+			right_first = 1;
+		else if (asy_mode == ASY_EVEN && (i % 2 == 0))
+			right_first == 1;
+
+		if (right_first) {
+			pthread_mutex_lock(&forks[right_fork(i)]);
+        	    	usleep(500000);
+			pthread_mutex_lock(&forks[left_fork(i)]);
+		}
+		else {
+			pthread_mutex_lock(&forks[left_fork(i)]);
+			usleep(500000);
+			pthread_mutex_lock(&forks[right_fork(i)]);
+		}
+
         /* MODE 1 - ASYMMETRIC — P4 picks up right fork first */
         else if (mode == 1 && i == NUM_PHILS - 1) {
             pthread_mutex_lock(&forks[right_fork(i)]);
@@ -154,13 +174,16 @@ void *think_and_eat(void *arg)
             claim_fork(left_fork(i), i);
         }
         /* MODE 0 - NAIVE and MODE 1 everyone else — left first */
-        else {
+        else if (asy_mode == ASY_ODD) {
             pthread_mutex_lock(&forks[left_fork(i)]);
-            claim_fork(left_fork(i), i);
-            rand_sleep();
             pthread_mutex_lock(&forks[right_fork(i)]);
             claim_fork(right_fork(i), i);
         }
+
+	else if (asy_mode == ASY_EVEN) {
+		pthread_mutex_lock(&forks[right_fork(i)]);
+		pthread_mutex_lock(&forks[left_fork(i)]);
+	}
 
         /* EATING */
         sem_wait(&mutex);
@@ -191,4 +214,11 @@ void *think_and_eat(void *arg)
     }
 
     return 0;
+}
+
+void rand_sleep() {
+	int high = 500000;
+	int low = 50;
+	int wait = (rand() % (high - low + 1)) + low;
+	usleep(wait);
 }

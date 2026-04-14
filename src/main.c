@@ -16,8 +16,7 @@ char *phil_names[NUM_PHILS] = {"Aristotle", "Plato", "Socrates", "Descartes", "K
 int   meals[NUM_PHILS]      = {0};
 int   fork_holder[NUM_PHILS];   /* -1 = free, N = held by philosopher N */
 
-int mode      = 0;
-int steps     = -1;
+int asy_mode = ASY_NONE;
 int waiter_num = 4;
 
 int main(int argc, char *argv[])
@@ -33,21 +32,31 @@ int main(int argc, char *argv[])
         else if (strncmp(argv[i], "--steps=", 8) == 0) {
             steps = atoi(argv[i] + 8);
         }
-        else if (strncmp(argv[i], "--waiters=", 10) == 0) {
-            waiter_num = atoi(argv[i] + 10);
-            if (waiter_num < 1 || waiter_num >= NUM_PHILS) {
-                printf("Invalid waiters value — must be between 1 and %d\n", NUM_PHILS - 1);
-                exit(1);
-            }
-        }
+	else if (strncmp (argv[i], "--asy=", 6) == 0) {
+		if (strcmp (argv[i] + 6,  "odd") == 0) {
+			asy_mode = ASY_ODD;
+		}
+		else if (strcmp (argv[i] + 6, "even") == 0) {
+			asy_mode = ASY_EVEN;
+		}
+		else {
+			printf("Invalid asymmetric mode selected.");
+			exit(1);
+		}
+	}
+		else if (strncmp(argv[i], "--waiters=", 10) == 0) { // New argument check
+        waiter_num = atoi(argv[i] + 10);
+		}
         else if (strcmp(argv[i], "--help") == 0) {
             printf("\nUsage: ./dining_philosophers [OPTIONS]\n\n");
-            printf("  --mode=0       Naive — deadlock will occur\n");
-            printf("  --mode=1       Asymmetric — no deadlock\n");
-            printf("  --mode=2       Waiter semaphore — no deadlock\n");
-            printf("  --waiters=N    Number of waiters (default: 4, max: %d)\n", NUM_PHILS - 1);
-            printf("  --steps=N      Number of cycles per philosopher\n");
-            printf("  --help         Show this help message\n\n");
+            printf("  --mode=0     Naive — deadlock will occur\n");
+            printf("  --mode=1     Asymmetric — no deadlock\n");
+            printf("  --mode=2     Waiter semaphore — no deadlock\n");
+			printf("  --waiters=N  Number of waiters serving the philosopher\n");
+            printf("  --steps=N    Number of cycles per philosopher\n");
+            printf("  --help       Show this help message\n\n");
+		printf("  --asy=odd Odd philosophers pick up right fork first\n");
+		printf("   --asy-even Even philosophers pick up right fork first\n");
             exit(0);
         }
         else {
@@ -55,6 +64,15 @@ int main(int argc, char *argv[])
             exit(1);
         }
     }
+
+	if (asy_mode != ASY_NONE && mode !=1) {
+		printf("Error: --asy can only be used with --mode=1\n");
+		exit(1);
+	}
+
+	if (mode == 1 && asy_mode == ASY_NONE) {
+		asy_mode = ASY_ODD;
+	}
 
     if (mode != 0 && mode != 1 && mode != 2) {
         printf("Invalid mode selected, exiting program\n");
