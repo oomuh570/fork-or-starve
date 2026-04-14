@@ -63,26 +63,19 @@ void *think_and_eat(void *arg)     /* executed concurrently by all philosophers 
 		if (asy_mode == ASY_ODD && (i % 2 != 0))
 			right_first = 1;
 		else if (asy_mode == ASY_EVEN && (i % 2 == 0))
-			right_first == 1;
+			right_first = 0;
 
 		if (right_first) {
 			pthread_mutex_lock(&forks[right_fork(i)]);
-        	    	usleep(500000);
 			pthread_mutex_lock(&forks[left_fork(i)]);
 		}
 		else {
 			pthread_mutex_lock(&forks[left_fork(i)]);
-			usleep(500000);
 			pthread_mutex_lock(&forks[right_fork(i)]);
 		}
+	}
 
         /* MODE 1 - ASYMMETRIC — P4 picks up right fork first */
-        else if (mode == 1 && i == NUM_PHILS - 1) {
-            pthread_mutex_lock(&forks[right_fork(i)]);
-            //usleep(500000);
-			rand_sleep();
-            pthread_mutex_lock(&forks[left_fork(i)]);
-        }
         /* MODE 0 - NAIVE and MODE 1 everyone else — left first */
         else if (asy_mode == ASY_ODD) {
             pthread_mutex_lock(&forks[left_fork(i)]);
