@@ -100,7 +100,7 @@ void print_stats() {
             strcat(bar, "█");
 
         /* starvation check */
-        if (meals[i] == 0 || (avg > 0 && meals[i] < avg / 2)) {
+        if (meals[i] == 0 || (avg > 0 && meals[i] < (int)(0.95 * avg))) {
             printf(DARK_RED "  P%d  %-12s :  %2d  %s  <- STARVATION WARNING\n" RESET,
                    i, phil_names[i], meals[i], bar);
             starvation = 1;
