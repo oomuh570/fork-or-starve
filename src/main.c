@@ -11,12 +11,10 @@
 #include "stats.h"
 
 pthread_mutex_t forks[NUM_PHILS];
-int state[NUM_PHILS];
+int   state[NUM_PHILS];
 char *phil_names[NUM_PHILS] = {"Aristotle", "Plato", "Socrates", "Descartes", "Kant"};
-int meals[NUM_PHILS] = {0};
-
-int mode = 0;
-int steps = -1;
+int   meals[NUM_PHILS]      = {0};
+int   fork_holder[NUM_PHILS];   /* -1 = free, N = held by philosopher N */
 
 int asy_mode = ASY_NONE;
 int waiter_num = 4;
@@ -82,20 +80,25 @@ int main(int argc, char *argv[])
     }
 
     if (steps != -1) {
-        printf("Running mode=%d for %d steps\n", mode, steps);
+        printf("Running mode=%d for %d steps | waiters=%d\n", mode, steps, waiter_num);
     }
     else {
-        printf("Running mode=%d\n", mode);
+        printf("Running mode=%d | waiters=%d\n", mode, waiter_num);
     }
 
-    srand(time(0));
+    srand(time(0));   /* seed once in main — not in threads */
     init_semaphores(waiter_num);
 
-    /* initialize forks and states */
+    /* initialize forks, states, and fork_holder */
     for (i = 0; i < NUM_PHILS; i++) {
         pthread_mutex_init(&forks[i], NULL);
-        state[i] = THINKING;
+        state[i]       = THINKING;
+        fork_holder[i] = -1;   /* -1 = fork is free */
     }
+
+    /* clear simulation log at start of each run */
+    FILE *log = fopen("simulation.log", "w");
+    if (log) fclose(log);
 
     /* only start display thread if running in a real terminal */
     if (isatty(fileno(stdout))) {
