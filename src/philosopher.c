@@ -152,15 +152,19 @@ void *think_and_eat(void *arg)
 		if (asy_mode == ASY_ODD && (i % 2 != 0))
 			right_first = 1;
 		else if (asy_mode == ASY_EVEN && (i % 2 == 0))
-			right_first = 0;
+			right_first = 1;
 
 		if (right_first) {
 			pthread_mutex_lock(&forks[right_fork(i)]);
+			claim_fork(right_fork(i), i);
 			pthread_mutex_lock(&forks[left_fork(i)]);
+			claim_fork(left_fork(i), i);
 		}
 		else {
 			pthread_mutex_lock(&forks[left_fork(i)]);
+			claim_fork(left_fork(i), i);
 			pthread_mutex_lock(&forks[right_fork(i)]);
+			claim_fork(right_fork(i), i);
 		}
 	}
 
@@ -173,15 +177,12 @@ void *think_and_eat(void *arg)
             claim_fork(left_fork(i), i);
         }
         /* MODE 0 - NAIVE and MODE 1 everyone else — left first */
-        else if (asy_mode == ASY_ODD) {
-            pthread_mutex_lock(&forks[left_fork(i)]);
-            pthread_mutex_lock(&forks[right_fork(i)]);
-            claim_fork(right_fork(i), i);
-        }
-
-	else if (asy_mode == ASY_EVEN) {
-		pthread_mutex_lock(&forks[right_fork(i)]);
+        else {
+		
 		pthread_mutex_lock(&forks[left_fork(i)]);
+		claim_fork(left_fork(i), i);
+		pthread_mutex_lock(&forks[right_fork(i)]);
+		claim_fork(right_fork(i), i);
 	}
 
         /* EATING */
